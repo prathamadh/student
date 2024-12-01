@@ -11,7 +11,7 @@ import socket
 # except:
 #     from mmengine import get_git_hash
 # #import mono.mmseg as mmseg
-import mmseg
+# import mmseg
 import time
 import datetime
 import logging
