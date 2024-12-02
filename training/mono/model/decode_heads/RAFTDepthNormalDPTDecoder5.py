@@ -113,12 +113,16 @@ class FlowHead(nn.Module):
 
         self.conv1n = nn.Conv2d(input_dim, hidden_dim // 2, 3, padding=1)
         self.conv2n = nn.Conv2d(hidden_dim // 2, output_dim_norm, 3, padding=1)
+
+        self.conv1r = nn.Conv2d(input_dim, hidden_dim // 2, 3, padding=1)
+        self.conv2r = nn.Conv2d(hidden_dim // 2, output_dim_norm, 3, padding=1)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
         depth = self.conv2d(self.relu(self.conv1d(x)))
         normal = self.conv2n(self.relu(self.conv1n(x)))
-        return torch.cat((depth, normal), dim=1)
+        roughness= self.conv2r(self.relu(self.conv1r(x)))
+        return torch.cat((depth, normal,roughness), dim=1)
         
 
 class ConvGRU(nn.Module):
