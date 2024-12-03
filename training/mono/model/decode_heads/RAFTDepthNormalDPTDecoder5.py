@@ -9,6 +9,11 @@ def compute_depth_expectation(prob, depth_values):
     depth = torch.sum(prob * depth_values, 1)
     return depth
 
+def compute_roughness_expectation(prob, depth_values):
+    depth_values = depth_values.view(*depth_values.shape, 1, 1)
+    depth = torch.sum(prob * depth_values, 1)
+    return depth
+
 def interpolate_float32(x, size=None, scale_factor=None, mode='nearest', align_corners=None):
     with torch.autocast(device_type='cuda', dtype=torch.bfloat16, enabled=False):
         return F.interpolate(x.float(), size=size, scale_factor=scale_factor, mode=mode, align_corners=align_corners)
@@ -544,7 +549,8 @@ class RAFTDepthNormalDPT5(nn.Module):
         self.iters = cfg.model.decode_head.iters # 22
         self.slow_fast_gru = cfg.model.decode_head.slow_fast_gru # True
 
-        self.num_depth_regressor_anchor = 256 # 512
+        self.num_depth_regressor_anchor = 256
+        self.num_roughness_regressor_anchor = 256 # 512
         self.used_res_channel = self.decoder_channels[1] # now, use 2/7 res
         self.token2feature = EncoderFeature(self.in_channels[0], self.feature_channels, self.use_cls_token, self.num_register_tokens)
         self.decoder_mono = DecoderFeature(self.in_channels, self.decoder_channels)
@@ -557,6 +563,17 @@ class RAFTDepthNormalDPT5(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(self.num_depth_regressor_anchor,
                       self.num_depth_regressor_anchor,
+                      kernel_size=1),
+        )
+        self.roughness_regressor = nn.Sequential(
+            nn.Conv2d(self.used_res_channel,
+                      self.num_depth_roughness_anchor,
+                      kernel_size=3,
+                      padding=1),
+            # nn.BatchNorm2d(self.num_depth_regressor_anchor),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(self.num_roughness_regressor_anchor,
+                      self.num_roughness_regressor_anchor,
                       kernel_size=1),
         )
         self.normal_predictor = nn.Sequential(
@@ -587,6 +604,11 @@ class RAFTDepthNormalDPT5(nn.Module):
         depth_bins_vec = self.get_bins(bins_num)
         depth_bins_vec = depth_bins_vec.unsqueeze(0).repeat(B, 1)        
         self.register_buffer('depth_expectation_anchor', depth_bins_vec, persistent=False)
+
+    def register_roughness_expectation_anchor(self, bins_num, B):
+        roughness_bins_vec = self.get_bins(bins_num)
+        roughness_bins_vec = roughness_bins_vec.unsqueeze(0).repeat(B, 1)        
+        self.register_buffer('roughness_expectation_anchor', roughness_bins_vec, persistent=False)
     
     def clamp(self, x):
         y = self.relu(x - self.min_val) + self.min_val
@@ -609,10 +631,40 @@ class RAFTDepthNormalDPT5(nn.Module):
         # plt.bar(range(len(h)), h)
         B = prob.shape[0]
         if "depth_expectation_anchor" not in self._buffers:
-            self.register_depth_expectation_anchor(self.num_depth_regressor_anchor, B)
+            self.register_depth_expectation_anchor(self.num_roughness_regressor_anchor, B)
         d = compute_depth_expectation(
             prob,
             self.depth_expectation_anchor[:B, ...]).unsqueeze(1)
+
+        ## Error logging
+        if torch.isnan(d ).any():
+            print('d_nan!!!')
+        if torch.isinf(d ).any():
+            print('d_inf!!!')
+
+        return (self.clamp(d) - self.max_val)/ self.regress_scale, prob_feature
+
+
+     def regress_roughness(self, feature_map_d):
+        prob_feature = self.roughness_regressor(feature_map_d)
+        prob = prob_feature.softmax(dim=1)
+        #prob = prob_feature.float().softmax(dim=1)
+
+        ## Error logging
+        if torch.isnan(prob).any():
+            print('prob_feat_nan!!!')
+        if torch.isinf(prob).any():
+            print('prob_feat_inf!!!')
+
+        # h = prob[0,:,0,0].cpu().numpy().reshape(-1)
+        # import matplotlib.pyplot as plt 
+        # plt.bar(range(len(h)), h)
+        B = prob.shape[0]
+        if "roughness_expectation_anchor" not in self._buffers:
+            self.register_roughness_expectation_anchor(self.num_depth_regressor_anchor, B)
+        d = compute_roughness_expectation(
+            prob,
+            self.roughness_expectation_anchor[:B, ...]).unsqueeze(1)
 
         ## Error logging
         if torch.isnan(d ).any():
@@ -713,7 +765,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         normal_confidence_map = ref_feat[:, -1:, :, :]
         depth_pred, binmap = self.regress_depth(feature_map) # regress bin for depth
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
-
+        roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
 
         ## encoder features to context-feature for init-hidden-state and contex-features
@@ -781,6 +833,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             prediction_normal=normal_outs[-1],
             normal_out_list=normal_outs,
             low_resolution_init=low_resolution_init,
+            roughness=roughness_pred,
         )
 
         return outputs
