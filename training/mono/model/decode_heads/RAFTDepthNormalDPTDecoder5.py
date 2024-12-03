@@ -113,16 +113,13 @@ class FlowHead(nn.Module):
 
         self.conv1n = nn.Conv2d(input_dim, hidden_dim // 2, 3, padding=1)
         self.conv2n = nn.Conv2d(hidden_dim // 2, output_dim_norm, 3, padding=1)
-
-        self.conv1r = nn.Conv2d(input_dim, hidden_dim // 2, 3, padding=1)
-        self.conv2r = nn.Conv2d(hidden_dim // 2, output_dim_norm, 3, padding=1)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
         depth = self.conv2d(self.relu(self.conv1d(x)))
         normal = self.conv2n(self.relu(self.conv1n(x)))
-        roughness= self.conv2r(self.relu(self.conv1r(x)))
-        return torch.cat((depth, normal,roughness), dim=1)
+
+        return torch.cat((depth, normal), dim=1)
         
 
 class ConvGRU(nn.Module):
@@ -579,6 +576,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         self.update_block = BasicMultiUpdateBlock(cfg, hidden_dims=self.hidden_dims, out_dims=6)
 
         self.relu = nn.ReLU(inplace=True)
+        self.pratham=None
     
     def get_bins(self, bins_num):
         depth_bins_vec = torch.linspace(math.log(self.min_val), math.log(self.max_val), bins_num, device="cuda")
@@ -703,7 +701,7 @@ class RAFTDepthNormalDPT5(nn.Module):
 
         ## decode features to init-depth (and confidence)
         ref_feat= self.decoder_mono(encoder_features) # now, 1/4 for depth
-
+        self.pratham=ref_feat
         ## Error logging
         if torch.isnan(ref_feat).any():
             print('ref_feat_nan!!!')
