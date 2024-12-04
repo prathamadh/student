@@ -567,7 +567,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         )
         self.roughness_regressor = nn.Sequential(
             nn.Conv2d(self.used_res_channel,
-                      self.num_depth_roughness_anchor,
+                      self.num_roughness_regressor_anchor,
                       kernel_size=3,
                       padding=1),
             # nn.BatchNorm2d(self.num_depth_regressor_anchor),
@@ -645,7 +645,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         return (self.clamp(d) - self.max_val)/ self.regress_scale, prob_feature
 
 
-     def regress_roughness(self, feature_map_d):
+    def regress_roughness(self, feature_map_d):
         prob_feature = self.roughness_regressor(feature_map_d)
         prob = prob_feature.softmax(dim=1)
         #prob = prob_feature.float().softmax(dim=1)
