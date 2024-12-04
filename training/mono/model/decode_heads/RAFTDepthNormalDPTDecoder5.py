@@ -585,16 +585,20 @@ class RAFTDepthNormalDPT5(nn.Module):
                       kernel_size=1),
         )
         self.roughness_regressor = nn.Sequential(
-            nn.Conv2d(self.used_res_channel,
-                      self.num_roughness_regressor_anchor,
-                      kernel_size=3,
-                      padding=1),
-            # nn.BatchNorm2d(self.num_depth_regressor_anchor),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(self.num_roughness_regressor_anchor,
-                      self.num_roughness_regressor_anchor,
-                      kernel_size=1),
-        )
+                nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True),  # First, upscale spatial dimensions
+                nn.Conv2d(
+                    self.used_res_channel,
+                    self.num_roughness_regressor_anchor,
+                    kernel_size=3,
+                    padding=1
+                ),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(
+                    self.num_roughness_regressor_anchor,
+                    self.num_roughness_regressor_anchor,
+                    kernel_size=1
+                )
+            )
         self.normal_predictor = nn.Sequential(
             nn.Conv2d(self.used_res_channel,
                       128,
