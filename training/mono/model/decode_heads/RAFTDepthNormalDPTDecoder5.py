@@ -529,6 +529,25 @@ class DecoderFeature(nn.Module):
         x = self.upconv_1(x, x1) # 1/4
         # x = self.upconv_0(x, x0) # 4/7
         return x
+class FeatureToGrayScale(nn.Module):
+    """
+    this is a experimental head for converting features to grayscale image to train it to generate roughness map and can be scaled to generate metallic maps 
+    """
+    def __init__(self, input_channels=256, output_channels=1, scale_factor=4):
+        super(FeatureToGrayScale, self).__init__()
+        self.upscale = nn.Sequential(
+            # Reduce channels while keeping spatial dimensions the same
+            nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+
+            # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, output_channels, kernel_size=4, stride=2, padding=1)
+        )
+
+    def forward(self, x):
+        return self.upscale(x)
 
 class RAFTDepthNormalDPT5(nn.Module):
     def __init__(self, cfg):
@@ -594,6 +613,7 @@ class RAFTDepthNormalDPT5(nn.Module):
 
         self.relu = nn.ReLU(inplace=True)
         self.pratham=None
+        self.roughness_head=FeatureToGrayScale(input_channels=self.num_roughness_regressor_anchor, output_channels=1, scale_factor=4)
     
     def get_bins(self, bins_num):
         depth_bins_vec = torch.linspace(math.log(self.min_val), math.log(self.max_val), bins_num, device="cuda")
@@ -821,7 +841,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             flow_predictions.append(self.clamp(flow_up[:,:1] * self.regress_scale + self.max_val))
             conf_predictions.append(flow_up[:,1:2])
             normal_outs.append(norm_normalize(flow_up[:,2:].clone()))
-
+        roughness_pred = self.roughness_head(roughness_pred)
         outputs=dict(
             prediction=flow_predictions[-1],
             predictions_list=flow_predictions,
