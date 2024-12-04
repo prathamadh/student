@@ -773,7 +773,7 @@ class RAFTDepthNormalDPT5(nn.Module):
 
         ## decode features to init-depth (and confidence)
         ref_feat= self.decoder_mono(encoder_features) # now, 1/4 for depth
-        self.pratham=ref_feat
+        
         ## Error logging
         if torch.isnan(ref_feat).any():
             print('ref_feat_nan!!!')
@@ -786,8 +786,9 @@ class RAFTDepthNormalDPT5(nn.Module):
         depth_pred, binmap = self.regress_depth(feature_map) # regress bin for depth
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
         roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
+        roughness_pred = self.roughness_head(roughness_pred)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
-
+        self.pratham = roughness_pred
         ## encoder features to context-feature for init-hidden-state and contex-features
         cnet_list = self.context_feature_encoder(encoder_features[::-1])
         net_list = [torch.tanh(x[0]) for x in cnet_list] # x_4, x_8, x_16 of hidden state
@@ -841,7 +842,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             flow_predictions.append(self.clamp(flow_up[:,:1] * self.regress_scale + self.max_val))
             conf_predictions.append(flow_up[:,1:2])
             normal_outs.append(norm_normalize(flow_up[:,2:].clone()))
-        roughness_pred = self.roughness_head(roughness_pred)
+        
         outputs=dict(
             prediction=flow_predictions[-1],
             predictions_list=flow_predictions,
