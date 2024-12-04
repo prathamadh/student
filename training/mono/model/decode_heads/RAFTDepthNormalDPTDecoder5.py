@@ -617,7 +617,7 @@ class RAFTDepthNormalDPT5(nn.Module):
 
         self.relu = nn.ReLU(inplace=True)
         self.pratham=None
-        self.roughness_head=FeatureToGrayScale(input_channels=self.num_roughness_regressor_anchor, output_channels=1, scale_factor=4)
+        # self.roughness_head=FeatureToGrayScale(input_channels=self.num_roughness_regressor_anchor, output_channels=1, scale_factor=4)
     
     def get_bins(self, bins_num):
         depth_bins_vec = torch.linspace(math.log(self.min_val), math.log(self.max_val), bins_num, device="cuda")
@@ -790,7 +790,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         depth_pred, binmap = self.regress_depth(feature_map) # regress bin for depth
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
         roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
-        roughness_pred = self.roughness_head(roughness_pred)
+        # roughness_pred = self.roughness_head(roughness_pred)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
         self.pratham = roughness_pred
         ## encoder features to context-feature for init-hidden-state and contex-features
