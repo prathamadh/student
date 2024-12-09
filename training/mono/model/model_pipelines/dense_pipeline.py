@@ -4,11 +4,12 @@ from mono.utils.comm import get_func
 
 
 class DensePredModel(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg,devicelist=["cuda:0"]):b
         super(DensePredModel, self).__init__()
 
         self.encoder = get_func('mono.model.' + cfg.model.backbone.prefix + cfg.model.backbone.type)(**cfg.model.backbone)
         self.decoder = get_func('mono.model.' + cfg.model.decode_head.prefix + cfg.model.decode_head.type)(cfg)
+        self.device = devicelist
         # try:
         #     decoder_compiled = torch.compile(decoder, mode='max-autotune')
         #     "Decoder compile finished"
@@ -21,7 +22,17 @@ class DensePredModel(nn.Module):
     
     def forward(self, input, **kwargs):
         # [f_32, f_16, f_8, f_4]
-        features = self.encoder(input)
+        if len(cuda.device_count())>1:
+            self.encoder = self.encoder.to(self.device[0])
+            self.decoder = self.decoder.to(self.device[1])
+            features = self.encoder(input)
         # [x_32, x_16, x_8, x_4, x, ...]
-        out = self.decoder(features, **kwargs)
+            features=features.to(self.device[1])
+            out = self.decoder(features, **kwargs)
+        else:
+            self.encoder = self.encoder.to(self.device[0])
+            self.decoder = self.decoder.to(self.device[0])
+            features = self.encoder(input)
+        # [x_32, x_16, x_8, x_4, x, ...]
+            out = self.decoder(features, **kwargs)
         return out
