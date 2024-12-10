@@ -34,6 +34,10 @@ model=dict(
     ),
 )
 
+kaggle = {
+    'device_list': ['cuda:0', 'cuda:1']
+}
+
 # loss method
 losses=dict(
     decoder_losses=[
