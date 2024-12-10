@@ -9,6 +9,7 @@ class DensePredModel(nn.Module):
 
         self.encoder = get_func('mono.model.' + cfg.model.backbone.prefix + cfg.model.backbone.type)(**cfg.model.backbone)
         self.decoder = get_func('mono.model.' + cfg.model.decode_head.prefix + cfg.model.decode_head.type)(cfg)
+        self.device_list = cfg.kaggle['device_list']
         # try:
         #     decoder_compiled = torch.compile(decoder, mode='max-autotune')
         #     "Decoder compile finished"
@@ -21,7 +22,16 @@ class DensePredModel(nn.Module):
     
     def forward(self, input, **kwargs):
         # [f_32, f_16, f_8, f_4]
-        features = self.encoder(input)
+        
+        if len(self.device_list )>1:
+            self.encoder = self.encoder.to(self.device_list[0])
+            self.decoder = self.decoder.to(self.device_list[1])
+            features = self.encoder(input)
         # [x_32, x_16, x_8, x_4, x, ...]
-        out = self.decoder(features, **kwargs)
+            features=features.to(self.device[1])
+            out = self.decoder(features, **kwargs)
+        else:
+            features = self.encoder(input)
+        # [x_32, x_16, x_8, x_4, x, ...]
+            out = self.decoder(features, **kwargs)
         return out
