@@ -832,6 +832,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         # roughness_pred = self.roughness_head(roughness_pred)
         roughness_pred = self.pred_roughness(feature_map, depth_confidence_map)
         gray_images = gray_images.unsqueeze(1)
+        gray_images.requires_grad = False
         self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
         roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
         roughness_pred=self.roughness_head(roughness_pred)
