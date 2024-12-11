@@ -628,7 +628,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             nn.Conv2d(64, 36, kernel_size=1),
             nn.Upsample(scale_factor=4, mode='bilinear', align_corners=False) 
         )
-        self.roughness_head=nn.Sequential(nn.Conv2d(37,
+        self.roughness_head=nn.Sequential(nn.Conv2d(self.used_res_channel+1,
                       128,
                       kernel_size=3,
                       padding=1),
@@ -830,10 +830,11 @@ class RAFTDepthNormalDPT5(nn.Module):
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
         # roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
         # roughness_pred = self.roughness_head(roughness_pred)
-        roughness_pred = self.pred_roughness(feature_map, depth_confidence_map)
+        # roughness_pred = self.pred_roughness(feature_map, depth_confidence_map)
         gray_images = gray_images.unsqueeze(1)
-        gray_images.requires_grad = False
-        self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
+        feature_map=interpolate_float32(feature_map, scale_factor=4, mode='bilinear', align_corners=True)
+        feature_map=torch.cat((gray_images,feature_map),dim=1)
+        # self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
         roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
         roughness_pred=self.roughness_head(roughness_pred)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
