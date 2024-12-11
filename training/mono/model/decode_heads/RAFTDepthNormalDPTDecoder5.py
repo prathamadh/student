@@ -628,7 +628,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             nn.Conv2d(64, 36, kernel_size=1),
             nn.Upsample(scale_factor=4, mode='bilinear', align_corners=False) 
         )
-        self.roughness_head=nn.sequential(nn.Conv2d(37,
+        self.roughness_head=nn.Sequential(nn.Conv2d(37,
                       128,
                       kernel_size=3,
                       padding=1),
