@@ -20,7 +20,7 @@ class DensePredModel(nn.Module):
 
         self.training = True
 
-    def to_grayscale(input):
+    def to_grayscale(self,input):
         
         weights = torch.tensor([0.2989, 0.5870, 0.1140]).view(3, 1, 1)
         grayscale_batch = torch.sum(input* weights.view(1, 3, 1, 1), dim=1)
