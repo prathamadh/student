@@ -36,7 +36,7 @@ class BaseDepthModel(nn.Module):
         if self.downsample != None:
             self.pred_upsample(self.downsample, output)
 
-        return output['prediction'], losses_dict, output['confidence']
+        return output, losses_dict, output['confidence']
     
     def inference(self, data):
         with torch.no_grad():
