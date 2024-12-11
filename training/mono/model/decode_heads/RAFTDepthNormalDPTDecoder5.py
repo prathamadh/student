@@ -40,7 +40,6 @@ def norm_normalize(norm_out):
     kappa = F.elu(kappa) + 1.0 + min_kappa
     final_out = torch.cat([norm_x / norm, norm_y / norm, norm_z / norm, kappa], dim=1)
     return final_out
-
 # uncertainty-guided sampling (only used during training)
 @torch.no_grad()
 def sample_points(init_normal, gt_norm_mask, sampling_ratio, beta):
