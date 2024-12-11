@@ -40,6 +40,13 @@ def norm_normalize(norm_out):
     kappa = F.elu(kappa) + 1.0 + min_kappa
     final_out = torch.cat([norm_x / norm, norm_y / norm, norm_z / norm, kappa], dim=1)
     return final_out
+def norm_normalize_single_channel(norm_out):
+    min_kappa = 0.01
+    # Compute the norm and apply transformations to single-channel input
+    norm = torch.sqrt(norm_out ** 2.0) + 1e-10
+    norm_out = F.elu(norm_out) + 1.0 + min_kappa
+    final_out = norm_out / norm
+    return final_out
 # uncertainty-guided sampling (only used during training)
 @torch.no_grad()
 def sample_points(init_normal, gt_norm_mask, sampling_ratio, beta):
@@ -728,7 +735,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             print('roughness_nan!!!')
         if torch.isinf(roughness_out).any():
             print('roughness_inf!!!')
-        return norm_normalize(roughness_out)
+        return norm_normalize_single_channel(roughness_out)
         
     
     def create_mesh_grid(self, height, width, batch, device="cuda", set_buffer=True):
