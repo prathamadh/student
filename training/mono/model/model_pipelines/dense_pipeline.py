@@ -23,15 +23,15 @@ class DensePredModel(nn.Module):
     def forward(self, input, **kwargs):
         # [f_32, f_16, f_8, f_4]
         
-        if len(self.device_list )>1:
-            self.encoder = self.encoder.to(self.device_list[0])
-            self.decoder = self.decoder.to(self.device_list[1])
-            features = self.encoder(input)
+        # if len(self.device_list )>1:
+        #     self.encoder = self.encoder.to(self.device_list[0])
+        #     self.decoder = self.decoder.to(self.device_list[1])
+        #     features = self.encoder(input)
+        # # [x_32, x_16, x_8, x_4, x, ...]
+        #     features=features.to(self.device[1])
+        #     out = self.decoder(features, **kwargs)
+        # else:
+        features = self.encoder(input)
         # [x_32, x_16, x_8, x_4, x, ...]
-            features=features.to(self.device[1])
-            out = self.decoder(features, **kwargs)
-        else:
-            features = self.encoder(input)
-        # [x_32, x_16, x_8, x_4, x, ...]
-            out = self.decoder(features, **kwargs)
+        out = self.decoder(features, **kwargs)
         return out
