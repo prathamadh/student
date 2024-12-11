@@ -35,7 +35,7 @@ model=dict(
 )
 
 kaggle = {
-    'device_list': ['cuda:0', 'cuda:1']
+    'device_list': ['cuda:0']
 }
 
 # loss method

@@ -610,6 +610,17 @@ class RAFTDepthNormalDPT5(nn.Module):
             nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
             nn.Conv2d(128, 3, kernel_size=1),
         )
+        self.roughness_predictor=nn.Sequential(
+            nn.Conv2d(self.used_res_channel,
+                      128,
+                      kernel_size=3,
+                      padding=1),
+            # nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
+            nn.Conv2d(128, 1, kernel_size=1),
+        )
 
         self.context_feature_encoder = ContextFeatureEncoder(self.feature_channels, [self.hidden_dims, self.context_dims])
         self.context_zqr_convs = nn.ModuleList([nn.Conv2d(self.context_dims[i], self.hidden_dims[i]*3, 3, padding=3//2) for i in range(self.n_gru_layers)])
@@ -709,6 +720,17 @@ class RAFTDepthNormalDPT5(nn.Module):
 
         return norm_normalize(torch.cat([normal_out, confidence], dim=1))
         #return norm_normalize(torch.cat([normal_out, confidence], dim=1).float())
+
+    def pred_roughness(self, feature_map, confidence):
+        roughness_out = self.roughness_predictor(feature_map)
+
+        ## Error logging
+        if torch.isnan(roughness_out).any():
+            print('roughness_nan!!!')
+        if torch.isinf(roughness_out).any():
+            print('roughness_inf!!!')
+        return norm_normalize(roughness_out, dim=1)
+        
     
     def create_mesh_grid(self, height, width, batch, device="cuda", set_buffer=True):
         y, x = torch.meshgrid([torch.arange(0, height, dtype=torch.float32, device=device),
@@ -789,7 +811,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         normal_confidence_map = ref_feat[:, -1:, :, :]
         depth_pred, binmap = self.regress_depth(feature_map) # regress bin for depth
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
-        roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
+        # roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
         # roughness_pred = self.roughness_head(roughness_pred)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
         self.pratham = roughness_pred
