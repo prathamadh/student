@@ -813,6 +813,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
         # roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
         # roughness_pred = self.roughness_head(roughness_pred)
+        roughness_pred = self.pred_roughness(feature_map, depth_confidence_map) # mlp for roughness
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
         self.pratham = roughness_pred
         ## encoder features to context-feature for init-hidden-state and contex-features
