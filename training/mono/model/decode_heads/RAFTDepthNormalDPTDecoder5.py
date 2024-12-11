@@ -831,6 +831,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         # roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
         # roughness_pred = self.roughness_head(roughness_pred)
         roughness_pred = self.pred_roughness(feature_map, depth_confidence_map)
+        self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
         roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
         roughness_pred=self.roughness_head(roughness_pred)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
