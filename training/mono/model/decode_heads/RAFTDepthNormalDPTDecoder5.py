@@ -729,7 +729,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             print('roughness_nan!!!')
         if torch.isinf(roughness_out).any():
             print('roughness_inf!!!')
-        return norm_normalize(roughness_out, dim=1)
+        return norm_normalize(roughness_out)
         
     
     def create_mesh_grid(self, height, width, batch, device="cuda", set_buffer=True):
