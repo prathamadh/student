@@ -835,8 +835,8 @@ class RAFTDepthNormalDPT5(nn.Module):
         feature_map=interpolate_float32(feature_map, scale_factor=4, mode='bilinear', align_corners=True)
         feature_map=torch.cat((gray_images,feature_map),dim=1)
         # self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
-        roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
-        roughness_pred=self.roughness_head(roughness_pred)
+        # roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
+        roughness_pred=self.roughness_head(feature_map)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
         # self.pratham = roughness_pred
         ## encoder features to context-feature for init-hidden-state and contex-features
