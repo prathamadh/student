@@ -624,9 +624,20 @@ class RAFTDepthNormalDPT5(nn.Module):
             # nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
-            nn.Conv2d(128, 1, kernel_size=1),
+            nn.Conv2d(128, 64, kernel_size=1), nn.ReLU(inplace=True),
+            nn.Conv2d(64, 36, kernel_size=1),
+            nn.Upsample(scale_factor=4, mode='bilinear', align_corners=False) 
         )
+        self.roughness_head=nn.sequential(nn.Conv2d(37,
+                      128,
+                      kernel_size=3,
+                      padding=1),
+            # nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
+            nn.Conv2d(128, 64, kernel_size=1), nn.ReLU(inplace=True),
+            nn.Conv2d(64, 1, kernel_size=1)
+            )
 
         self.context_feature_encoder = ContextFeatureEncoder(self.feature_channels, [self.hidden_dims, self.context_dims])
         self.context_zqr_convs = nn.ModuleList([nn.Conv2d(self.context_dims[i], self.hidden_dims[i]*3, 3, padding=3//2) for i in range(self.n_gru_layers)])
@@ -776,7 +787,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         """
         return interpolate_float32(x, scale_factor=scale_factor*self.up_scale/8, mode="nearest")
 
-    def forward(self, vit_features, **kwargs):
+    def forward(self, vit_features,gray_images, **kwargs):
         ## read vit token to multi-scale features
         B, H, W, _, _, num_register_tokens = vit_features[1]
         vit_features = vit_features[0]
@@ -819,9 +830,11 @@ class RAFTDepthNormalDPT5(nn.Module):
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
         # roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
         # roughness_pred = self.roughness_head(roughness_pred)
-        roughness_pred = self.pred_roughness(feature_map, depth_confidence_map) # mlp for roughness
+        roughness_pred = self.pred_roughness(feature_map, depth_confidence_map)
+        roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
+        roughness_pred=self.roughness_head(roughness_pred)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
-        self.pratham = roughness_pred
+        # self.pratham = roughness_pred
         ## encoder features to context-feature for init-hidden-state and contex-features
         cnet_list = self.context_feature_encoder(encoder_features[::-1])
         net_list = [torch.tanh(x[0]) for x in cnet_list] # x_4, x_8, x_16 of hidden state

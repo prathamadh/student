@@ -19,6 +19,12 @@ class DensePredModel(nn.Module):
         #     self.decoder = decoder
 
         self.training = True
+
+    def to_grayscale(input):
+        image_batch = torch.rand(10, 3, 256, 256)  # 10 images
+        grayscale_batch = torch.sum(image_batch * weights.view(1, 3, 1, 1), dim=1)
+        return grayscale_batch
+
     
     def forward(self, input, **kwargs):
         # [f_32, f_16, f_8, f_4]
@@ -32,6 +38,7 @@ class DensePredModel(nn.Module):
         #     out = self.decoder(features, **kwargs)
         # else:
         features = self.encoder(input)
+        gray_images=to_grayscale(input)
         # [x_32, x_16, x_8, x_4, x, ...]
-        out = self.decoder(features, **kwargs)
+        out = self.decoder(features,gray_images, **kwargs)
         return out
