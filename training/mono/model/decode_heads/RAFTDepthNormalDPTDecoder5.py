@@ -4,6 +4,8 @@ import numpy as np
 import math
 import torch.nn.functional as F
 
+
+
 def compute_depth_expectation(prob, depth_values):
     depth_values = depth_values.view(*depth_values.shape, 1, 1)
     depth = torch.sum(prob * depth_values, 1)
@@ -636,7 +638,30 @@ class RAFTDepthNormalDPT5(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 128, kernel_size=3,padding=1), nn.ReLU(inplace=True),
             nn.Conv2d(128, 64, kernel_size=3,padding=1), nn.ReLU(inplace=True),
-            nn.Conv2d(64, 1, kernel_size=3,padding=1)
+            nn.Conv2d(64, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 1, kernel_size=3,padding=1)
+            
+            )
+
+        self.ao_head=nn.Sequential(nn.Conv2d(1,
+                      128,
+                      kernel_size=3,
+                      padding=1),
+            # nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(128, 64, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(64, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 1, kernel_size=3,padding=1)
+            
             )
 
         self.context_feature_encoder = ContextFeatureEncoder(self.feature_channels, [self.hidden_dims, self.context_dims])
