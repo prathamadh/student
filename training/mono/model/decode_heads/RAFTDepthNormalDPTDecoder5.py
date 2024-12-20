@@ -597,8 +597,8 @@ class Roughness_head(nn.Module):
     def __init__(self, input_channels=96):
         super(Roughness_head, self).__init__()
         self.channel_fix = nn.Conv2d(input_channels,64, kernel_size=3, stride=1, padding=1)
-        self.conv_blk1=ConvBlock(input_channels=64)
-        self.conv_blk2=ConvBlock(input_channels=64)
+        self.conv_blk1=ConvBlock(channels=64)
+        self.conv_blk2=ConvBlock(channels=64)
         self.head=nn.Sequential(
             # Reduce channels while keeping spatial dimensions the same
             nn.Conv2d(64,32, kernel_size=3, stride=1, padding=1),
