@@ -537,25 +537,82 @@ class DecoderFeature(nn.Module):
         x = self.upconv_1(x, x1) # 1/4
         # x = self.upconv_0(x, x0) # 4/7
         return x
-class FeatureToGrayScale(nn.Module):
+class Gray_to_feature(nn.Module):
     """
     this is a experimental head for converting features to grayscale image to train it to generate roughness map and can be scaled to generate metallic maps 
     """
-    def __init__(self, input_channels=256, output_channels=1, scale_factor=4):
+    def __init__(self, input_channels=1, output_channels=64):
         super(FeatureToGrayScale, self).__init__()
         self.upscale = nn.Sequential(
             # Reduce channels while keeping spatial dimensions the same
-            nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(input_channels, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),
+        )
+
+
+
+        # self.upscale = nn.Sequential(
+        #     # Reduce channels while keeping spatial dimensions the same
+        #     nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1),
+        #     nn.ReLU(),
+
+        #     # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
+        #     nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(32, output_channels, kernel_size=4, stride=2, padding=1)
+        # )
+
+    def forward(self, x):
+        return self.upscale(x)
+
+
+class Upscale_roughness(nn.Module):
+    """
+    this is a experimental head for converting features to grayscale image to train it to generate roughness map and can be scaled to generate metallic maps 
+    """
+    def __init__(self, input_channels=1, output_channels=32):
+        super(Upscale_roughness, self).__init__()
+        self.upscale = nn.Sequential(
+            # Reduce channels while keeping spatial dimensions the same
+            nn.Conv2d(input_channels, 128, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
 
             # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, output_channels, kernel_size=4, stride=2, padding=1)
+            nn.ConvTranspose2d(64, output_channels, kernel_size=4, stride=2, padding=1)
         )
 
     def forward(self, x):
         return self.upscale(x)
+
+class roughness_head(nn.Module):
+   
+    def __init__(self, input_channels=96, output_channels=96):
+        super(roughness_head, self).__init__()
+        self.channel_fix = nn.Conv2d(input_channels,64, kernel_size=3, stride=1, padding=1)
+        self.conv_blk1=ConvBlock(input_channels=64)
+        self.conv_blk2=ConvBlock(input_channels=64)
+        self.head=nn.Sequential(
+            # Reduce channels while keeping spatial dimensions the same
+            nn.Conv2d(64,32, kernel_size=3, stride=1, padding=1),
+            
+
+            # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
+            nn.ConvTranspose2d(32, 1, kernel_size=3, stride=1, padding=1),
+
+            )
+            
+
+    def forward(self, x):
+        return self.head(self.conv_blk2(self.conv_blk1(self.channel_fix(x))))
+
 
 class RAFTDepthNormalDPT5(nn.Module):
     def __init__(self, cfg):
@@ -667,7 +724,8 @@ class RAFTDepthNormalDPT5(nn.Module):
         self.context_feature_encoder = ContextFeatureEncoder(self.feature_channels, [self.hidden_dims, self.context_dims])
         self.context_zqr_convs = nn.ModuleList([nn.Conv2d(self.context_dims[i], self.hidden_dims[i]*3, 3, padding=3//2) for i in range(self.n_gru_layers)])
         self.update_block = BasicMultiUpdateBlock(cfg, hidden_dims=self.hidden_dims, out_dims=6)
-
+        self.gray_feature=Gray_to_feature(input_channels=1, output_channels=64)
+        self.up_roughness=Upscale_roughness(input_channels=self.used_res_channel,output_channels=32)
         self.relu = nn.ReLU(inplace=True)
         self.pratham=None
         # self.roughness_head=FeatureToGrayScale(input_channels=self.num_roughness_regressor_anchor, output_channels=1, scale_factor=4)
@@ -857,8 +915,11 @@ class RAFTDepthNormalDPT5(nn.Module):
         # roughness_pred = self.roughness_head(roughness_pred)
         # roughness_pred = self.pred_roughness(feature_map, depth_confidence_map)
         gray_images = gray_images.unsqueeze(1)
-        feature_map=interpolate_float32(feature_map, scale_factor=4, mode='bilinear', align_corners=True)
-        feature_map=torch.cat((gray_images,feature_map),dim=1)
+        gray_feat=gray_feature(gray_images)
+        up_feat=up_roughness(feature_map)
+        # feature_map=interpolate_float32(feature_map, scale_factor=4, mode='bilinear', align_corners=True)
+        grayscale
+        feature_map=torch.cat((gray_feat,up_feat),dim=1)
         # self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
         # roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
         roughness_pred=self.roughness_head(feature_map)
@@ -899,7 +960,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             if self.n_gru_layers >= 2 and self.slow_fast_gru:# Update low-res GRU and mid-res GRU
                 net_list = self.update_block(net_list, inp_list, iter32=self.n_gru_layers==3, iter16=True, iter08=False, update=False)
             net_list, up_mask, delta_flow = self.update_block(net_list, inp_list, None, flow, iter32=self.n_gru_layers==3, iter16=self.n_gru_layers>=2)
-
+            
             # F(t+1) = F(t) + \Delta(t)
             coords1 = coords1 + delta_flow
 
