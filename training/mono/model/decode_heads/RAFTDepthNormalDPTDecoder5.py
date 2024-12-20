@@ -915,7 +915,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         gray_feat=self.gray_feature(gray_images)
         up_feat=self.up_roughness(feature_map)
         # feature_map=interpolate_float32(feature_map, scale_factor=4, mode='bilinear', align_corners=True)
-        grayscale
+    
         feature_map=torch.cat((gray_feat,up_feat),dim=1)
         # self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
         # roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
