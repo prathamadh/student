@@ -542,7 +542,7 @@ class Gray_to_feature(nn.Module):
     this is a experimental head for converting features to grayscale image to train it to generate roughness map and can be scaled to generate metallic maps 
     """
     def __init__(self, input_channels=1, output_channels=64):
-        super(FeatureToGrayScale, self).__init__()
+        super(Gray_to_feature, self).__init__()
         self.upscale = nn.Sequential(
             # Reduce channels while keeping spatial dimensions the same
             nn.Conv2d(input_channels, 32, kernel_size=3, stride=1, padding=1),
