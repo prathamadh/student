@@ -19,19 +19,27 @@ class DensePredModel(nn.Module):
         #     self.decoder = decoder
 
         self.training = True
+
+    def to_grayscale(self,input):
+        
+        weights = torch.tensor([0.2989, 0.5870, 0.1140]).view(3, 1, 1).to("cuda")
+        grayscale_batch = torch.sum(input* weights.view(1, 3, 1, 1), dim=1)
+        return grayscale_batch
+
     
     def forward(self, input, **kwargs):
         # [f_32, f_16, f_8, f_4]
         
-        if len(self.device_list )>1:
-            self.encoder = self.encoder.to(self.device_list[0])
-            self.decoder = self.decoder.to(self.device_list[1])
-            features = self.encoder(input)
+        # if len(self.device_list )>1:
+        #     self.encoder = self.encoder.to(self.device_list[0])
+        #     self.decoder = self.decoder.to(self.device_list[1])
+        #     features = self.encoder(input)
+        # # [x_32, x_16, x_8, x_4, x, ...]
+        #     features=features.to(self.device[1])
+        #     out = self.decoder(features, **kwargs)
+        # else:
+        features = self.encoder(input)
+        gray_images=self.to_grayscale(input)
         # [x_32, x_16, x_8, x_4, x, ...]
-            features=features.to(self.device[1])
-            out = self.decoder(features, **kwargs)
-        else:
-            features = self.encoder(input)
-        # [x_32, x_16, x_8, x_4, x, ...]
-            out = self.decoder(features, **kwargs)
+        out = self.decoder(features,gray_images, **kwargs)
         return out
