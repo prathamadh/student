@@ -4,6 +4,8 @@ import numpy as np
 import math
 import torch.nn.functional as F
 
+
+
 def compute_depth_expectation(prob, depth_values):
     depth_values = depth_values.view(*depth_values.shape, 1, 1)
     depth = torch.sum(prob * depth_values, 1)
@@ -40,7 +42,13 @@ def norm_normalize(norm_out):
     kappa = F.elu(kappa) + 1.0 + min_kappa
     final_out = torch.cat([norm_x / norm, norm_y / norm, norm_z / norm, kappa], dim=1)
     return final_out
-
+def norm_normalize_single_channel(norm_out):
+    min_kappa = 0.01
+    # Compute the norm and apply transformations to single-channel input
+    norm = torch.sqrt(norm_out ** 2.0) + 1e-10
+    norm_out = F.elu(norm_out) + 1.0 + min_kappa
+    final_out = norm_out / norm
+    return final_out
 # uncertainty-guided sampling (only used during training)
 @torch.no_grad()
 def sample_points(init_normal, gt_norm_mask, sampling_ratio, beta):
@@ -529,25 +537,79 @@ class DecoderFeature(nn.Module):
         x = self.upconv_1(x, x1) # 1/4
         # x = self.upconv_0(x, x0) # 4/7
         return x
-class FeatureToGrayScale(nn.Module):
+class Gray_to_feature(nn.Module):
     """
     this is a experimental head for converting features to grayscale image to train it to generate roughness map and can be scaled to generate metallic maps 
     """
-    def __init__(self, input_channels=256, output_channels=1, scale_factor=4):
-        super(FeatureToGrayScale, self).__init__()
+    def __init__(self, input_channels=1, output_channels=64):
+        super(Gray_to_feature, self).__init__()
         self.upscale = nn.Sequential(
             # Reduce channels while keeping spatial dimensions the same
-            nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(input_channels, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),
+        )
+
+
+
+        # self.upscale = nn.Sequential(
+        #     # Reduce channels while keeping spatial dimensions the same
+        #     nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1),
+        #     nn.ReLU(),
+
+        #     # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
+        #     nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(32, output_channels, kernel_size=4, stride=2, padding=1)
+        # )
+
+    def forward(self, x):
+        return self.upscale(x)
+
+
+class Upscale_roughness(nn.Module):
+    """
+    this is a experimental head for converting features to grayscale image to train it to generate roughness map and can be scaled to generate metallic maps 
+    """
+    def __init__(self, input_channels=1, output_channels=32):
+        super(Upscale_roughness, self).__init__()
+        self.upscale = nn.Sequential(
+            # Reduce channels while keeping spatial dimensions the same
+            nn.Conv2d(input_channels, 128, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
 
             # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, output_channels, kernel_size=4, stride=2, padding=1)
+            nn.ConvTranspose2d(64, output_channels, kernel_size=4, stride=2, padding=1)
         )
 
     def forward(self, x):
         return self.upscale(x)
+
+class Roughness_head(nn.Module):
+   
+    def __init__(self, input_channels=96):
+        super(Roughness_head, self).__init__()
+        self.channel_fix = nn.Conv2d(input_channels,64, kernel_size=3, stride=1, padding=1)
+        self.conv_blk1=ConvBlock(channels=64)
+        self.conv_blk2=ConvBlock(channels=64)
+        self.head=nn.Sequential(
+            # Reduce channels while keeping spatial dimensions the same
+            nn.Conv2d(64,32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1),
+
+            )
+            
+
+    def forward(self, x):
+        return self.head(self.conv_blk2(self.conv_blk1(self.channel_fix(x))))
+
 
 class RAFTDepthNormalDPT5(nn.Module):
     def __init__(self, cfg):
@@ -610,11 +672,57 @@ class RAFTDepthNormalDPT5(nn.Module):
             nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
             nn.Conv2d(128, 3, kernel_size=1),
         )
+        # self.roughness_predictor=nn.Sequential(
+        #     nn.Conv2d(self.used_res_channel,
+        #               128,
+        #               kernel_size=3,
+        #               padding=1),
+        #     # nn.BatchNorm2d(128),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(128, 128, kernel_size=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(128, 64, kernel_size=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(64, 36, kernel_size=1),
+        #     nn.Upsample(scale_factor=4, mode='bilinear', align_corners=False) 
+        #)
+        #self.roughness_head=nn.Sequential(nn.Conv2d(self.used_res_channel+1,
+        #               128,
+        #               kernel_size=3,
+        #               padding=1),
+        #     # nn.BatchNorm2d(128),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(128, 128, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(128, 64, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(64, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 1, kernel_size=3,padding=1)
+            
+        #     )
 
+        # self.ao_head=nn.Sequential(nn.Conv2d(1,
+        #               128,
+        #               kernel_size=3,
+        #               padding=1),
+        #     # nn.BatchNorm2d(128),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(128, 128, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(128, 64, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(64, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 32, kernel_size=3,padding=1), nn.ReLU(inplace=True),
+        #     nn.Conv2d(32, 1, kernel_size=3,padding=1)
+            
+        #     )
+        self.roughness_head=Roughness_head(input_channels=96)
         self.context_feature_encoder = ContextFeatureEncoder(self.feature_channels, [self.hidden_dims, self.context_dims])
         self.context_zqr_convs = nn.ModuleList([nn.Conv2d(self.context_dims[i], self.hidden_dims[i]*3, 3, padding=3//2) for i in range(self.n_gru_layers)])
         self.update_block = BasicMultiUpdateBlock(cfg, hidden_dims=self.hidden_dims, out_dims=6)
-
+        self.gray_feature=Gray_to_feature(input_channels=1, output_channels=64)
+        self.up_roughness=Upscale_roughness(input_channels=self.used_res_channel,output_channels=32)
         self.relu = nn.ReLU(inplace=True)
         self.pratham=None
         # self.roughness_head=FeatureToGrayScale(input_channels=self.num_roughness_regressor_anchor, output_channels=1, scale_factor=4)
@@ -709,6 +817,17 @@ class RAFTDepthNormalDPT5(nn.Module):
 
         return norm_normalize(torch.cat([normal_out, confidence], dim=1))
         #return norm_normalize(torch.cat([normal_out, confidence], dim=1).float())
+
+    def pred_roughness(self, feature_map, confidence):
+        roughness_out = self.roughness_predictor(feature_map)
+
+        ## Error logging
+        if torch.isnan(roughness_out).any():
+            print('roughness_nan!!!')
+        if torch.isinf(roughness_out).any():
+            print('roughness_inf!!!')
+        return norm_normalize_single_channel(roughness_out)
+        
     
     def create_mesh_grid(self, height, width, batch, device="cuda", set_buffer=True):
         y, x = torch.meshgrid([torch.arange(0, height, dtype=torch.float32, device=device),
@@ -748,7 +867,7 @@ class RAFTDepthNormalDPT5(nn.Module):
         """
         return interpolate_float32(x, scale_factor=scale_factor*self.up_scale/8, mode="nearest")
 
-    def forward(self, vit_features, **kwargs):
+    def forward(self, vit_features,gray_images, **kwargs):
         ## read vit token to multi-scale features
         B, H, W, _, _, num_register_tokens = vit_features[1]
         vit_features = vit_features[0]
@@ -789,10 +908,20 @@ class RAFTDepthNormalDPT5(nn.Module):
         normal_confidence_map = ref_feat[:, -1:, :, :]
         depth_pred, binmap = self.regress_depth(feature_map) # regress bin for depth
         normal_pred = self.pred_normal(feature_map, normal_confidence_map) # mlp for normal
-        roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
+        # roughness_pred, binmap_roughness = self.regress_roughness(feature_map) 
         # roughness_pred = self.roughness_head(roughness_pred)
+        # roughness_pred = self.pred_roughness(feature_map, depth_confidence_map)
+        gray_images = gray_images.unsqueeze(1)
+        gray_feat=self.gray_feature(gray_images)
+        up_feat=self.up_roughness(feature_map)
+        # feature_map=interpolate_float32(feature_map, scale_factor=4, mode='bilinear', align_corners=True)
+    
+        feature_map=torch.cat((gray_feat,up_feat),dim=1)
+        # self.pratham={"gray_images":gray_images,"depth_pred":depth_pred,"normal_pred":normal_pred,"roughness_pred":roughness_pred}
+        # roughness_pred=torch.cat((gray_images,roughness_pred),dim=1)
+        roughness_pred=self.roughness_head(feature_map)
         depth_init = torch.cat((depth_pred, depth_confidence_map, normal_pred), dim=1) # (N, 1+1+4, H, W)
-        self.pratham = roughness_pred
+        # self.pratham = roughness_pred
         ## encoder features to context-feature for init-hidden-state and contex-features
         cnet_list = self.context_feature_encoder(encoder_features[::-1])
         net_list = [torch.tanh(x[0]) for x in cnet_list] # x_4, x_8, x_16 of hidden state
@@ -828,7 +957,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             if self.n_gru_layers >= 2 and self.slow_fast_gru:# Update low-res GRU and mid-res GRU
                 net_list = self.update_block(net_list, inp_list, iter32=self.n_gru_layers==3, iter16=True, iter08=False, update=False)
             net_list, up_mask, delta_flow = self.update_block(net_list, inp_list, None, flow, iter32=self.n_gru_layers==3, iter16=self.n_gru_layers>=2)
-
+            
             # F(t+1) = F(t) + \Delta(t)
             coords1 = coords1 + delta_flow
 
