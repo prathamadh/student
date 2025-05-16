@@ -561,19 +561,19 @@ class DecoderFeature(nn.Module):
 
 
 
-        # self.upscale = nn.Sequential(
-        #     # Reduce channels while keeping spatial dimensions the same
-        #     nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
+    #     self.upscale = nn.Sequential(
+    #         # Reduce channels while keeping spatial dimensions the same
+    #         nn.Conv2d(input_channels, 64, kernel_size=3, stride=1, padding=1),
+    #         nn.ReLU(),
 
-        #     # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
-        #     nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
-        #     nn.ReLU(),
-        #     nn.ConvTranspose2d(32, output_channels, kernel_size=4, stride=2, padding=1)
-        # )
+    #         # Increase spatial dimensions by a factor of 2 (scale_factor = 4 implies 2x2 upsampling twice)
+    #         nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+    #         nn.ReLU(),
+    #         nn.ConvTranspose2d(32, output_channels, kernel_size=4, stride=2, padding=1)
+    #     )
 
-    def forward(self, x):
-        return self.upscale(x)
+    # def forward(self, x):
+    #     return self.upscale(x)
 
 
 # class Upscale_roughness(nn.Module):
