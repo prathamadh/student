@@ -939,7 +939,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             coords1 = coords1 + depth_init
 
         if self.training:
-            low_resolution_init = [self.clamp(depth_init[:,:1] * self.regress_scale + self.max_val), depth_init[:,1:2], norm_normalize(depth_init[:,2:].clone())]
+            low_resolution_init = [self.clamp(depth_init[:,:1] * self.regress_scale + self.max_val), depth_init[:,1:2], norm_normalize(depth_init[:,2:6].clone(),)]
             init_depth = upflow4(depth_init)
             flow_predictions = [self.clamp(init_depth[:,:1] * self.regress_scale + self.max_val)]
             conf_predictions = [init_depth[:,1:2]]
