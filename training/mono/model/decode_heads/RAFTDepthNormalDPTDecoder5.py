@@ -943,7 +943,7 @@ class RAFTDepthNormalDPT5(nn.Module):
             init_depth = upflow4(depth_init)
             flow_predictions = [self.clamp(init_depth[:,:1] * self.regress_scale + self.max_val)]
             conf_predictions = [init_depth[:,1:2]]
-            normal_outs = [norm_normalize(init_depth[:,2:].clone())]
+            normal_outs = [norm_normalize(init_depth[:,2:6].clone())]
 
         else:
             flow_predictions = []
