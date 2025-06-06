@@ -183,8 +183,8 @@ class BasicMultiUpdateBlock(nn.Module):
         encoder_output_dim = 6 # no corr volume
 
         self.gru08 = ConvGRU(hidden_dims[2], encoder_output_dim+3 + hidden_dims[1] * (self.n_gru_layers > 1))
-        self.gru16 = ConvGRU(hidden_dims[1], hidden_dims[0] * (self.n_gru_layers == 3) + hidden_dims[2]+3)
-        self.gru32 = ConvGRU(hidden_dims[0], hidden_dims[1]+3)
+        self.gru16 = ConvGRU(hidden_dims[1], hidden_dims[0] * (self.n_gru_layers == 3) + hidden_dims[2])
+        self.gru32 = ConvGRU(hidden_dims[0], hidden_dims[1])
         self.flow_head = FlowHead(hidden_dims[2], hidden_dim=2*hidden_dims[2])
         factor = 2**self.n_downsample
 
