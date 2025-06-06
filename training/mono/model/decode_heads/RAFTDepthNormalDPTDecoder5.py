@@ -979,7 +979,7 @@ class RAFTDepthNormalDPT5(nn.Module):
 
             flow_predictions.append(self.clamp(flow_up[:,:1] * self.regress_scale + self.max_val))
             # conf_predictions.append(flow_up[:,1:2])
-            normal_outs.append(norm_normalize(flow_up[:,2:5].clone()))
+            normal_outs.append(norm_normalize(flow_up[:,2:6].clone()))
             rm_outs=norm_normalize(flow_up[:,5:])
         
         outputs=dict(
