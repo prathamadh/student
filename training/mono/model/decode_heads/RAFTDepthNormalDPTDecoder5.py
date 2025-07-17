@@ -984,16 +984,17 @@ class RAFTDepthNormalDPT5(nn.Module):
         
         outputs=dict(
             prediction=flow_predictions[-1],
-            # predictions_list=flow_predictions,
+            predictions_list=flow_predictions,
             # confidence=conf_predictions[-1],
             # confidence_list=conf_predictions,
             pred_logit=None,
             # samples_pred_list=samples_pred_list,
             # coord_list=coord_list,
             # prediction_normal=normal_outs[-1],
-            # normal_out_list=normal_outs,
+            normal_out_list=normal_outs,
             # low_resolution_init=low_resolution_init,
             rm=rm_outs,
+        
         )
 
         return outputs

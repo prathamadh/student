@@ -151,10 +151,9 @@ class BaseDepthModel(nn.Module):
         args = dict(pred_logit=pred_logit)
         
         target = kwargs.pop('target')
-        args.update(kwargs)
-
         # data type for each batch
-        batches_data_type = np.array(kwargs['data_type']) 
+        batches_data_type = np.array(kwargs.pop('data_type'))
+        args.update(kwargs) 
         # batches_data_names = np.array(kwargs['dataset']) 
 
         # resize the target
