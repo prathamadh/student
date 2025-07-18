@@ -165,7 +165,6 @@ class BaseDepthModel(nn.Module):
         for loss_method in criterions:
             # sample batches, which satisfy the loss requirement for data types
             new_mask = self.create_mask_as_loss(loss_method, mask, batches_data_type)
-
             loss_tmp = loss_method(
                 prediction=prediction, 
                 target=target, 

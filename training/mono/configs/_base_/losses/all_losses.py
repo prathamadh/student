@@ -18,7 +18,7 @@ Note that out_channel and depth_normalize will be overwriten by configs in data_
 #             ]
 losses=dict(
     decoder_losses=[
-        dict(type='VNLoss', sample_ratio=0.2, loss_weight=1.0),
+        # dict(type='VNLoss', sample_ratio=0.2, loss_weight=1.0),
         dict(type='WCELoss', loss_weight=1.0, depth_normalize=(0, 0), out_channel=0),
     ],
     auxi_losses=[],
