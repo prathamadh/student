@@ -157,9 +157,9 @@ class BaseDepthModel(nn.Module):
         # batches_data_names = np.array(kwargs['dataset']) 
 
         # resize the target
-        # if target.shape[2] != prediction.shape[2] and target.shape[3] != prediction.shape[3]:
-        #     _, _, H, W = prediction.shape
-        #     target = nn.functional.interpolate(target, (H,W), mode='nearest')
+        if target.shape[2] != prediction.shape[2] and target.shape[3] != prediction.shape[3]:
+            _, _, H, W = prediction.shape
+            target = nn.functional.interpolate(target, (H,W), mode='nearest')
 
         mask = target > 1e-8
         for loss_method in criterions:
