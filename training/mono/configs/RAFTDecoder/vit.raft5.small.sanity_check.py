@@ -37,18 +37,20 @@ model=dict(
 # loss method
 losses=dict(
     decoder_losses=[
-        dict(type='VNLoss', sample_ratio=0.2, loss_weight=1.0),   
-        dict(type='GRUSequenceLoss', loss_weight=0.5, loss_gamma=0.9, stereo_sup=0.0),     
-        dict(type='SkyRegularizationLoss', loss_weight=0.001, sample_ratio=0.4, regress_value=200, normal_regress=[0, 0, -1]),
-        dict(type='HDNRandomLoss', loss_weight=0.5, random_num=10),
-        dict(type='HDSNRandomLoss', loss_weight=0.5, random_num=20, batch_limit=4),
-        dict(type='PWNPlanesLoss', loss_weight=1),
-        dict(type='NormalBranchLoss', loss_weight=1.0, loss_fn='NLL_ours_GRU'),
-        dict(type='DeNoConsistencyLoss', loss_weight=0.01, loss_fn='CEL', scale=2, depth_detach=True)
+          dict(type="ScaleInvL1Loss",loss_weight=1)
+     #    dict(type='VNLoss', sample_ratio=0.2, loss_weight=1.0),   
+     #    dict(type='GRUSequenceLoss', loss_weight=0.5, loss_gamma=0.9, stereo_sup=0.0),     
+     #    dict(type='SkyRegularizationLoss', loss_weight=0.001, sample_ratio=0.4, regress_value=200, normal_regress=[0, 0, -1]),
+     #    dict(type='HDNRandomLoss', loss_weight=0.5, random_num=10),
+     #    dict(type='HDSNRandomLoss', loss_weight=0.5, random_num=20, batch_limit=4),
+     #    dict(type='PWNPlanesLoss', loss_weight=1),
+     #    dict(type='NormalBranchLoss', loss_weight=1.0, loss_fn='NLL_ours_GRU'),
+     #    dict(type='DeNoConsistencyLoss', loss_weight=0.01, loss_fn='CEL', scale=2, depth_detach=True)
+     #    dict(type='WCELoss', loss_weight=1.0, depth_normalize=(0, 0), out_channel=0)
     ],
-    gru_losses=[
-        dict(type='SkyRegularizationLoss', loss_weight=0.001, sample_ratio=0.4, regress_value=200, normal_regress=[0, 0, -1]),
-    ],
+#     gru_losses=[
+#         dict(type='SkyRegularizationLoss', loss_weight=0.001, sample_ratio=0.4, regress_value=200, normal_regress=[0, 0, -1]),
+#     ],
 )
 
 data_array = [
