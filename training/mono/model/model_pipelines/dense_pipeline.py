@@ -39,7 +39,7 @@ class DensePredModel(nn.Module):
         #     out = self.decoder(features, **kwargs)
         # else:
         features = self.encoder(input)
-        gray_images=self.to_grayscale(input)
+        gray_images=self.to_grayscale(input) #TODO: remove this line if not needed
         # [x_32, x_16, x_8, x_4, x, ...]
         out = self.decoder(features,gray_images, **kwargs)
         return out

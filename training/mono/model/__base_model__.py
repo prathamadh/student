@@ -31,7 +31,8 @@ class BaseDepthModel(nn.Module):
         losses_dict = {}
         if self.training:
             output.update(data)
-            losses_dict = self.get_loss(output)
+            losses_dict=self.get_loss_for_PBR(output)
+            # losses_dict = self.get_loss(output)
             # losses_dict={}
         if self.downsample != None:
             self.pred_upsample(self.downsample, output)
@@ -49,6 +50,14 @@ class BaseDepthModel(nn.Module):
 
             output['dataset'] = 'wild'
         return output
+    
+    def get_loss_for_PBR(self, paras):
+        losses_dict = {}
+        # Losses for training
+        if self.training:
+           loss=self.criterions_auxi(paras["prediction"],paras["target"])
+           losses_dict["total_loss"]=loss
+        return losses_dict
 
     def get_loss(self, paras):
         losses_dict = {}
