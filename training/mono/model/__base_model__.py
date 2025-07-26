@@ -53,10 +53,14 @@ class BaseDepthModel(nn.Module):
     
     def get_loss_for_PBR(self, paras):
         losses_dict = {}
+        total_loss = 0
         # Losses for training
         if self.training:
-           loss=self.criterions_auxi(paras["prediction"],paras["target"])
-           losses_dict["total_loss"]=loss
+           for loss_method in self.criterions_auxi:
+
+                loss=loss_method(paras["prediction"],paras["target"])
+                total_loss+=loss
+           losses_dict["total_loss"]=total_loss
         return losses_dict
 
     def get_loss(self, paras):
